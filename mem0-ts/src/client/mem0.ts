@@ -148,7 +148,6 @@ export default class MemoryClient {
       headers: {
         ...options.headers,
         Authorization: `Token ${this.apiKey}`,
-        "Mem0-User-ID": this.telemetryId,
       },
     });
     if (!response.ok) {
@@ -514,7 +513,8 @@ export default class MemoryClient {
     this._validateOrgProject();
     const payloadKeys = Object.keys(options || {});
     this._captureEvent("get_project", [payloadKeys]);
-    const { fields } = options;
+
+    const { fields = [] } = options;
 
     if (!(this.organizationId && this.projectId)) {
       throw new Error(
