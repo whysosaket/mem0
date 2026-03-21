@@ -145,7 +145,7 @@ const memoryPlugin = {
     // CLI Commands
     // ========================================================================
 
-    registerCli(api, provider, cfg, _effectiveUserId, _agentUserId, buildSearchOptions, () => currentSessionId);
+    registerCli(api, provider, cfg, _effectiveUserId, _agentUserId, buildSearchOptions, () => currentSessionId, buildAddOptions);
 
     // ========================================================================
     // Lifecycle Hooks
@@ -712,6 +712,7 @@ function registerCli(
   _agentUserId: (id: string) => string,
   buildSearchOptions: (userIdOverride?: string, limit?: number, runId?: string, sessionKey?: string) => SearchOptions,
   getCurrentSessionId: () => string | undefined,
+  buildAddOptions: (userIdOverride?: string, runId?: string, sessionKey?: string) => AddOptions,
 ) {
   api.registerCli(
     ({ program }) => {
@@ -811,6 +812,42 @@ function registerCli(
             );
           } catch (err) {
             console.error(`Stats failed: ${String(err)}`);
+          }
+        });
+
+      mem0
+        .command("migrate")
+        .description("Migrate memories from OpenClaw native files to Mem0")
+        .argument("[workspace]", "OpenClaw workspace path (default: current directory)", ".")
+        .option("--source <type>", 'Source filter: "memory", "sessions", or "all"', "all")
+        .option("--batch-size <n>", "Max chars per message batch", "2000")
+        .option("--dry-run", "Preview without writing to Mem0", false)
+        .option("--delay <ms>", "Delay between batches in ms", "1000")
+        .option("--user-id <id>", "Override configured user ID")
+        .option("--reset", "Discard previous migration state and start fresh", false)
+        .action(async (workspace: string, opts: Record<string, string | boolean>) => {
+          try {
+            const { runMigration } = await import("./migrate.ts");
+            const resolvedPath = api.resolvePath(workspace as string);
+            await runMigration(
+              provider,
+              {
+                workspacePath: resolvedPath,
+                source: (opts.source as "memory" | "sessions" | "all") || "all",
+                batchSize: parseInt(opts["batch-size"] as string, 10) || 2000,
+                dryRun: opts["dry-run"] === true,
+                delayMs: parseInt(opts.delay as string, 10) || 1000,
+                userId: (opts["user-id"] as string) || cfg.userId,
+              },
+              (userIdOverride?: string) => buildAddOptions(userIdOverride),
+              {
+                info: (msg: string) => console.log(msg),
+                warn: (msg: string) => console.warn(msg),
+              },
+              opts.reset === true,
+            );
+          } catch (err) {
+            console.error(`Migration failed: ${String(err)}`);
           }
         });
     },
