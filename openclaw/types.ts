@@ -89,3 +89,46 @@ export interface Mem0Provider {
   getAll(options: ListOptions): Promise<MemoryItem[]>;
   delete(memoryId: string): Promise<void>;
 }
+
+// ============================================================================
+// Migration Types
+// ============================================================================
+
+export interface DiscoveredFile {
+  /** Absolute path to the file */
+  path: string;
+  /** Path relative to workspace root */
+  relativePath: string;
+  /** Whether this is a memory file or session file */
+  source: "memory" | "sessions";
+  /** File size in bytes */
+  size: number;
+  /** SHA-256 content hash for change detection */
+  hash: string;
+}
+
+export interface MigrationState {
+  started_at: string;
+  last_updated_at: string;
+  /** Map of relativePath -> contentHash for successfully migrated files */
+  migrated_files: Record<string, string>;
+  total_files_processed: number;
+  total_memories_extracted: number;
+  total_errors: number;
+  error_files: string[];
+}
+
+export interface MigrateOptions {
+  /** Path to the OpenClaw workspace root */
+  workspacePath: string;
+  /** Which source types to migrate */
+  source: "memory" | "sessions" | "all";
+  /** Number of messages per provider.add() call */
+  batchSize: number;
+  /** Preview mode — no writes to Mem0 */
+  dryRun: boolean;
+  /** Delay in ms between provider.add() calls */
+  delayMs: number;
+  /** User ID override (defaults to plugin config userId) */
+  userId?: string;
+}
